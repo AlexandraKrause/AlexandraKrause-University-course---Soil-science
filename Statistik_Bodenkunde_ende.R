@@ -1,0 +1,334 @@
+#Aufgabe:
+#signifikante Unterschiede in den nitrat- und stickstoffgehalten zwischen:
+
+#1. Signifikanter Unterschied TN / NO3 in Wasser
+#2. Parabraunerde vs. Gley sowie zwischen Bachwasser-/Sediment- vs. Bodenproben
+#3. Ober- vs. Unterboden
+
+
+#Abk?rzungen (siehe excel-datei) Zusammenfassung:
+#um lange W?rter nicht immer ausschreiben zu m?ssen, murden verschiedene Abk?rzungen genutzt.
+#in dieser Datei werden lufttrockene Proben mit "trocken" abgek?rzt und proben aus frischem boden sowie die wasserproben ( aus c/N, corg und aus dem zweiten Durchlauf Nitrat) mit "nass". 
+#Bodenklassen werden mit "B?den" abgek?rzt.Hierunter f?llt
+#um direkt vergleichen zu k?nnen auch wasser, welches sich von den bodenklassen abgrent. also "kein boden" ist.
+#boden umfasst also boden und kein boden.
+#horizont ist in der excel-datei eingeteilt in Ober- und Unterboden. der begriff umfasst also beides.
+
+
+library(readxl)
+library(tidyverse)
+library(car)
+
+Wasser <- read_excel("./Statistik_Bodenkunde.xlsx", sheet = 1)
+WDC <- read_excel("./Statistik_Bodenkunde.xlsx", sheet = 2)
+DRYSOIL <- read_excel("./Statistik_Bodenkunde.xlsx", sheet = 3)
+
+
+WDC <- WDC %>% 
+  mutate(Bodentyp = as.factor(Bodentyp))
+
+DRYSOIL <- DRYSOIL %>% 
+  mutate(Bodentyp = as.factor(Bodentyp))
+
+#### 1. Signifikanter Unterschied TN / NO3 in Wasser ####
+
+t.test(Wasser$`NO3[µg/ml]`, Wasser$`TN[µg/g]`, paired = TRUE)
+
+# sind nicht signifikant voneinander Verschieden. aber da es nur 3 Proben sind, machen weder Test
+# auf normalverteilung noch auf Varianzhomogenität wirklich sinn.
+
+#### 2. Parabraunerde vs. Gley sowie zwischen Bachwasser-/Sediment- vs. Bodenproben ####
+### WDC ###
+
+#Varianzhomogenitaet testen#
+leveneTest(WDC$Nitrate.fs, WDC$Bodentyp, center = mean)
+leveneTest(WDC$Nitrate.fs.w, WDC$Bodentyp, center = mean)
+leveneTest(WDC$TN.fs,  WDC$Bodentyp, center = mean)
+leveneTest(WDC$TN.fs.w,  WDC$Bodentyp, center = mean)
+
+ # Alles Varianzhomogen da p > 0.05
+
+#Normalverteilung testen#
+# shapiro mit $p.value um alle Kategorien zusammenzuf?hren
+
+Normalverteilung.WDC <- WDC %>% 
+  group_by(Bodentyp) %>% 
+  summarise(nitrate.fs = shapiro.test(Nitrate.fs)$p.value,
+            nitrate.fs.w = shapiro.test(Nitrate.fs.w)$p.value,
+            TN.fs = shapiro.test(TN.fs)$p.value,
+            TN.fs.w = shapiro.test(TN.fs.w)$p.value)
+
+# Alle außer TN.fs.w Normalverteilt (p > 0,05), Test für ich Trotzdem für Normalverteilte Daten machen 
+
+##Anova##
+
+Mod1 <- aov(Nitrate.fs ~ Bodentyp, data = WDC, contrasts = list(Bodentyp = contr.sum))
+Mod2 <- aov(Nitrate.fs.w ~ Bodentyp, data = WDC, contrasts = list(Bodentyp = contr.sum))
+Mod3<- aov(TN.fs ~ Bodentyp, data = WDC, contrasts = list(Bodentyp = contr.sum))
+Mod4 <- aov(TN.fs.w ~ Bodentyp, data = WDC, contrasts = list(Bodentyp = contr.sum))
+
+summary(Mod1)
+summary(Mod2)
+summary(Mod3)
+summary(Mod4)
+
+# Keine signifikanten Unterschiede bei WDC zwischen PB und Gley (sowohl bei fs und fs-w)
+# p immer größer 0.05
+
+### DRYSOIL ###
+
+#Varianzhomogenitaet testen#
+leveneTest(DRYSOIL$nitrate.ds, DRYSOIL$Bodentyp, center = mean)
+leveneTest(DRYSOIL$N.ds, DRYSOIL$Bodentyp, center = mean)
+
+# Alles Varianzhomogen da p > 0.05
+
+Normalverteilung.DRYSOIL <- DRYSOIL %>% 
+  group_by(Bodentyp) %>% 
+  summarise(nitrate.ds = shapiro.test(nitrate.ds)$p.value,
+            N.ds = shapiro.test(N.ds)$p.value)
+
+# Alle außer PB N.ds Normalverteilt (p > 0,05), Test für ich Trotzdem für Normalverteilte Daten machen 
+
+##Anova##
+
+Mod5 <- aov(nitrate.ds ~ Bodentyp, data = DRYSOIL, contrasts = list(Bodentyp = contr.sum))
+Mod6 <- aov(N.ds ~ Bodentyp, data = DRYSOIL, contrasts = list(Bodentyp = contr.sum))
+
+summary(Mod5)
+summary(Mod6)
+
+# Keine signifikanten Unterschiede bei WDC zwischen PB und Gley (sowohl bei Nitrate und N)
+# p immer größer 0.05
+
+#### 3. Ober- vs. Unterboden ####
+### WDC ###
+
+#Varianzhomogenitaet testen#
+leveneTest(WDC$Nitrate.fs, WDC$Bodenhoehe, center = mean)
+leveneTest(WDC$Nitrate.fs.w, WDC$Bodenhoehe, center = mean)
+leveneTest(WDC$TN.fs,  WDC$Bodenhoehe, center = mean)
+leveneTest(WDC$TN.fs.w,  WDC$Bodenhoehe, center = mean)
+
+# Alles Varianzhomogen da p > 0.05
+
+Normalverteilung.WDC <- WDC %>% 
+  group_by(Bodentyp, Bodenhoehe) %>% 
+  summarise(nitrate.fs = shapiro.test(Nitrate.fs)$p.value,
+            nitrate.fs.w = shapiro.test(Nitrate.fs.w)$p.value,
+            TN.fs = shapiro.test(TN.fs)$p.value,
+            TN.fs.w = shapiro.test(TN.fs.w)$p.value)
+
+# Alles Normalverteilt da p > 0.05
+
+##Anova##
+
+mod7 <- aov(Nitrate.fs ~ Bodenhoehe, data = WDC, contrasts = list(Bodenhoehe = contr.sum))
+mod8 <- aov(Nitrate.fs.w ~ Bodenhoehe, data = WDC, contrasts = list(Bodenhoehe = contr.sum))
+mod9 <- aov(TN.fs ~ Bodenhoehe, data = WDC, contrasts = list(Bodenhoehe = contr.sum))
+mod10 <- aov(TN.fs.w ~ Bodenhoehe, data = WDC, contrasts = list(Bodenhoehe = contr.sum))
+
+summary(mod7)
+summary(mod8)
+summary(mod9)
+summary(mod10)
+
+### DRYSOIL ###
+
+#Varianzhomogenitaet testen#
+leveneTest(DRYSOIL$nitrate.ds, DRYSOIL$Bodenhoehe, center = median)
+leveneTest(DRYSOIL$N.ds, DRYSOIL$Bodenhoehe, center = median)
+
+# Alles Varianzhomogen da p > 0.05
+
+Normalverteilung.DRYSOIL <- DRYSOIL %>% 
+  group_by(Bodentyp, Bodenhoehe) %>% 
+  summarise(nitrate.ds = shapiro.test(nitrate.ds)$p.value,
+            N.ds = shapiro.test(N.ds)$p.value)
+# Alles Normalverteilt da p > 0.05
+
+mod11 <- aov(nitrate.ds ~ Bodenhoehe, data = DRYSOIL, contrasts = list(Bodenhoehe = contr.sum))
+mod12 <- aov(N.ds ~ Bodenhoehe, data = DRYSOIL, contrasts = list(Bodenhoehe = contr.sum))
+
+summary(mod11)
+summary(mod12)
+
+#### 4. Ober- vs. Unterboden + Bodentyp ####
+### WDC ###
+
+## zweifaktorielle ANOVA ## 
+# mod13 <- aov(Nitrate.fs ~ Bodentyp + Bodenhoehe, data = WDC, contrasts = list(Bodenhoehe = contr.sum))
+# mod14 <- aov(Nitrate.fs.w ~ Bodentyp + Bodenhoehe, data = WDC, contrasts = list(Bodenhoehe = contr.sum))
+# mod15 <- aov(TN.fs ~ Bodentyp + Bodenhoehe, data = WDC, contrasts = list(Bodenhoehe = contr.sum))
+# mod16 <- aov(TN.fs.w ~ Bodentyp + Bodenhoehe, data = WDC, contrasts = list(Bodenhoehe = contr.sum))
+# 
+# summary(mod13)
+# summary(mod14)
+# summary(mod15)
+# summary(mod16)
+
+### DRYSOIL ###
+
+# mod17 <- aov(nitrate.ds ~ Bodentyp + Bodenhoehe, data = DRYSOIL, contrasts = list(Bodenhoehe = contr.sum))
+# mod18 <- aov(N.ds ~ Bodentyp + Bodenhoehe, data = DRYSOIL, contrasts = list(Bodenhoehe = contr.sum))
+# 
+# summary(mod17)
+# summary(mod18)
+
+#### 4. Bodentyp + Horizont ####
+### WDC ###
+
+## zweifaktorielle ANOVA ## 
+
+## Bodentyp rausnehmen ##
+mod19 <- aov(Nitrate.fs ~ Bodentyp + Horizont, data = WDC, contrasts = list(Bodentyp = contr.sum))
+mod20 <- aov(Nitrate.fs.w ~ Bodentyp + Horizont, data = WDC, contrasts = list(Bodentyp = contr.sum))
+mod21 <- aov(TN.fs ~ Bodentyp + Horizont, data = WDC, contrasts = list(Bodentyp = contr.sum))
+mod22 <- aov(TN.fs.w ~ Bodentyp + Horizont, data = WDC, contrasts = list(Bodentyp = contr.sum))
+
+
+summary(mod19)
+summary(mod20)
+summary(mod21)
+summary(mod22)
+
+TukeyHSD(mod19)
+TukeyHSD(mod20)
+TukeyHSD(mod21)
+TukeyHSD(mod22)
+
+WDC.Gley <- WDC %>% 
+  filter(Bodentyp == "Gley") %>% 
+  select(Horizont, Nitrate.fs.w, TN.fs.w) %>% 
+  mutate(Horizont = factor(Horizont, levels = c("rAp", "Go", "Gr")))
+
+WDC.PB <- WDC %>% 
+  filter(Bodentyp == "PB") %>% 
+  select(Horizont, Nitrate.fs.w, TN.fs.w) %>% 
+  mutate(Horizont = factor(Horizont, levels = c("Ap", "Bt", "Bv", "C")))
+
+par(mfrow=c(2,2))
+boxplot(Nitrate.fs.w ~ Horizont, data = WDC.Gley, main="a)", ylab = "Nitrate [µg/g]", xlab = "Soil horizon Gley")
+boxplot(TN.fs.w ~ Horizont, data = WDC.Gley, main="b)", ylab = "Total Nitrogen [µg/g]", xlab = "Soil horizon Gley")
+
+
+boxplot(Nitrate.fs.w ~ Horizont, data = WDC.PB, main="c)", ylab = "Nitrate [µg/g]", xlab = "Soil horizon Parabraunerde" )
+boxplot(TN.fs.w ~ Horizont, data = WDC.PB, main="d)", ylab = "Total Nitrogen [µg/g]", xlab = "Soil horizon Parabraunerde")
+
+
+
+### DRYSOIL ###
+
+mod23 <- aov(nitrate.ds ~ Bodentyp + Horizont, data = DRYSOIL, contrasts = list(Bodentyp = contr.sum))
+mod24 <- aov(N.ds ~ Bodentyp + Horizont, data = DRYSOIL, contrasts = list(Bodentyp = contr.sum))
+
+summary(mod23)
+summary(mod24)
+
+
+TukeyHSD(mod23)
+TukeyHSD(mod24)
+
+DRYSOIL.Gley <- DRYSOIL %>% 
+  filter(Bodentyp == "Gley") %>% 
+  select(Horizont, nitrate.ds, N.ds) %>% 
+  mutate(Horizont = factor(Horizont, levels = c("rAp", "Go", "Gr")))
+
+DRYSOIL.PB <- DRYSOIL %>% 
+  filter(Bodentyp == "PB") %>% 
+  select(Horizont, nitrate.ds, N.ds) %>% 
+  mutate(Horizont = factor(Horizont, levels = c("Ap", "Bt", "Bv", "C")))
+
+par(mfrow=c(2,2))
+boxplot(nitrate.ds ~ Horizont, data = DRYSOIL.Gley, main="a)", ylab = "Nitrate [µg/g]", xlab = "Soil horizon Gley")
+boxplot(N.ds ~ Horizont, data = DRYSOIL.Gley, main="b)", ylab = "Total Nitrogen [µg/g]", xlab = "Soil horizon Gley")
+
+boxplot(nitrate.ds ~ Horizont, data = DRYSOIL.PB, ylab = "Nitrate [µg/g]", xlab = "Soil horizon Parabraunerde" )
+boxplot(N.ds ~ Horizont, data = DRYSOIL.PB, ylab = "Total Nitrogen [µg/g]", xlab = "Soil horizon Parabraunerde")
+
+#### Korrelation ####
+### Wasser ###
+
+Wasser.cor <- Wasser %>% 
+  filter(`mean.NO3[µg/ml]` > 0)
+
+cor.test(Wasser.cor$`NO3[µg/ml]`, Wasser.cor$`TN[µg/g]`)
+
+### WDC ###
+cor.test(WDC$Nitrate.fs[WDC$Bodentyp == "PB"], WDC$TN.fs[WDC$Bodentyp == "PB"])
+cor.test(WDC$Nitrate.fs[WDC$Bodentyp == "Gley"], WDC$TN.fs[WDC$Bodentyp == "Gley"])
+
+
+### DRYSOIL ###
+cor.test(DRYSOIL$nitrate.ds[WDC$Bodentyp == "PB"], DRYSOIL$N.ds[WDC$Bodentyp == "PB"])
+cor.test(DRYSOIL$nitrate.ds[WDC$Bodentyp == "Gley"], DRYSOIL$N.ds[WDC$Bodentyp == "Gley"])
+
+#### Wasser + WDC ####
+
+Wasser <- Wasser %>% 
+  mutate(Bodentyp = Typ,
+         Nitrate = `NO3[µg/ml]`) %>% 
+  select(Bodentyp, Nitrate)
+
+WDC <- WDC %>% 
+  mutate(Nitrate = Nitrate.fs.w) %>% 
+  select(Bodentyp, Nitrate)
+
+WDC.Wasser <- WDC %>% 
+  rbind(Wasser)
+
+mod.test <- aov(Nitrate ~ Bodentyp, data = WDC.Wasser)
+summary(mod.test)
+TukeyHSD(mod.test)
+
+WDC.Wasser.Gley <- WDC %>% 
+  rbind(Wasser) %>% 
+  filter(Bodentyp != "PB")
+
+WDC.Wasser.PB <- WDC %>% 
+  rbind(Wasser) %>% 
+  filter(Bodentyp != "Gley")
+
+#Varianzhomogenitaet testen#
+leveneTest(WDC.Wasser$Nitrate, WDC.Wasser$Bodentyp, center = mean)
+
+# Alles Varianzhomogen da p > 0.05
+
+Normalverteilung.WDC.Wasser <- WDC.Wasser %>% 
+  group_by(Bodentyp) %>% 
+  summarise(nitrate = shapiro.test(Nitrate)$p.value)
+
+#ANOVA#
+
+mod25 <- aov(Nitrate ~ Bodentyp, data = WDC.Wasser.Gley, contrasts = list(Bodentyp = contr.sum))
+summary(mod25)
+
+mod26 <- aov(Nitrate ~ Bodentyp, data = WDC.Wasser.PB, contrasts = list(Bodentyp = contr.sum))
+summary(mod26)
+
+#### Wasser + DRYSOIL ####
+
+DRYSOIL <- DRYSOIL %>% 
+  mutate(Nitrate = nitrate.ds) %>% 
+  select(Bodentyp, Nitrate)
+
+DRYSOIL.Wasser <- DRYSOIL %>% 
+  rbind(Wasser)
+
+mod.test2 <- aov(Nitrate ~ Bodentyp, data = DRYSOIL.Wasser)
+summary(mod.test2)
+TukeyHSD(mod.test2)
+
+DRYSOIL.Wasser.Gley <- DRYSOIL %>% 
+  rbind(Wasser) %>% 
+  filter(Bodentyp != "PB")
+
+DRYSOIL.Wasser.PB <- DRYSOIL %>% 
+  rbind(Wasser) %>% 
+  filter(Bodentyp != "Gley")
+
+mod27 <- aov(Nitrate ~ Bodentyp, data = DRYSOIL.Wasser.Gley, contrasts = list(Bodentyp = contr.sum))
+summary(mod27)
+
+mod28 <- aov(Nitrate ~ Bodentyp, data = DRYSOIL.Wasser.PB, contrasts = list(Bodentyp = contr.sum))
+summary(mod28)
